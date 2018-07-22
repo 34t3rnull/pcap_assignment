@@ -10,6 +10,18 @@ void usage() {
   printf("sample: pcap_test wlan0\n");
 }
 
+void print_mac(char *head, unsigned char *data)
+{
+  printf("%s\t%02x:%02x:%02x:%02x:%02x:%02x\n", head,
+    data[0], data[1], data[2], data[3], data[4], data[5]);
+}
+
+void print_data(char *head, unsigned char *data)
+{
+  printf("%s\t\t%02x %02x %02x %02x %02x %02x %02x %02x\n", head,
+    data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     usage();
@@ -34,6 +46,8 @@ int main(int argc, char* argv[]) {
     unsigned short eth_type;
     unsigned char ip_proto;
     int res = pcap_next_ex(handle, &header, &packet);
+    char ip_length;
+    char tcp_length;
     if (res == 0) continue;
     if (res == -1 || res == -2) break;
     printf("*********************************************************\n");
@@ -43,29 +57,21 @@ int main(int argc, char* argv[]) {
     if (eth_type == 0x0800)
     {
       ip_h = (struct ip*)(packet + sizeof(struct ethhdr));
+      ip_length = (*(char*)ip_h & 0xf) * 32 / 8;
       ip_proto = ip_h->ip_p;
       if (ip_proto == 0x6)
       {
-        tcp_h = (struct tcphdr*)(packet + sizeof(struct ethhdr) + sizeof(struct ip));
-        data = (unsigned char *)(packet + sizeof(struct ethhdr) + sizeof(struct ip) + sizeof(struct tcphdr));
-        printf("src_MAC:\t%02x:%02x:%02x:%02x:%02x:%02x\n",
-          eth_h->h_source[0], eth_h->h_source[1],
-          eth_h->h_source[2], eth_h->h_source[3],
-          eth_h->h_source[4], eth_h->h_source[5]);
-        printf("dst_MAC:\t%02x:%02x:%02x:%02x:%02x:%02x\n",
-          eth_h->h_dest[0], eth_h->h_dest[1],
-          eth_h->h_dest[2], eth_h->h_dest[3],
-          eth_h->h_dest[4], eth_h->h_dest[5]);
+        tcp_h = (struct tcphdr*)(packet + sizeof(struct ethhdr) + ip_length);
+        tcp_length = ((*((char*)tcp_h + 12) >> 4) & 0x0f) * 4;
+        data = (unsigned char *)(packet + sizeof(struct ethhdr) + ip_length + tcp_length);
+        print_mac("src_MAC:", (unsigned char *)eth_h->h_source);
+        print_mac("dst_MAC:", (unsigned char *)eth_h->h_dest);
         printf("src ip:\t\t%s\n", inet_ntoa(ip_h->ip_src));
         printf("dst ip:\t\t%s\n", inet_ntoa(ip_h->ip_dst));
         printf("src port:\t%u\n", htons(tcp_h->th_sport));
         printf("dst port:\t%u\n", htons(tcp_h->th_dport));
-        printf("data:\t\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-          data[0], data[1], data[2], data[3],
-          data[4], data[5], data[6], data[7]);
-        printf("\t\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-          data[8], data[9], data[10], data[11],
-          data[12], data[13], data[14], data[15]);
+        print_data("data:", data);
+        print_data("", &data[8]);
       }
     }
     printf("*********************************************************\n");
