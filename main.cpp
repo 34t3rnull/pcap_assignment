@@ -10,13 +10,13 @@ void usage() {
   printf("sample: pcap_test wlan0\n");
 }
 
-void print_mac(char *head, unsigned char *data)
+void print_mac(const char *head, unsigned char *data)
 {
   printf("%s\t%02x:%02x:%02x:%02x:%02x:%02x\n", head,
     data[0], data[1], data[2], data[3], data[4], data[5]);
 }
 
-void print_data(char *head, unsigned char *data)
+void print_data(const char *head, unsigned char *data)
 {
   printf("%s\t\t%02x %02x %02x %02x %02x %02x %02x %02x\n", head,
     data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
         printf("dst ip:\t\t%s\n", inet_ntoa(ip_h->ip_dst));
         printf("src port:\t%u\n", htons(tcp_h->th_sport));
         printf("dst port:\t%u\n", htons(tcp_h->th_dport));
-        print_data("data:", data);
-        print_data("", &data[8]);
+        print_data("data:", (unsigned char *)data);
+        print_data("", (unsigned char *)data + 8);
       }
     }
     printf("*********************************************************\n");
