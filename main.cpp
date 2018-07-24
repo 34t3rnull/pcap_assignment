@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 
+#define ETHERTYPE_IP  0x0800
+#define IPPROTO_TCP   0x06
+
 void usage() {
   printf("syntax: pcap_test <interface>\n");
   printf("sample: pcap_test wlan0\n");
@@ -46,24 +49,24 @@ int main(int argc, char* argv[]) {
     unsigned short eth_type;
     unsigned char ip_proto;
     int res = pcap_next_ex(handle, &header, &packet);
-    char ip_length;
-    char tcp_length;
+    unsigned int ip_length;
+    u_int8_t tcp_length;
     if (res == 0) continue;
     if (res == -1 || res == -2) break;
     printf("*********************************************************\n");
     printf("%u bytes captured\n", header->caplen);
     eth_h = (struct ethhdr*)packet;
     eth_type = htons(eth_h->h_proto);
-    if (eth_type == 0x0800)
+    if (eth_type == ETHERTYPE_IP)
     {
       ip_h = (struct ip*)(packet + sizeof(struct ethhdr));
-      ip_length = (*(char*)ip_h & 0xf) * 32 / 8;
+      ip_length = ip_h->ip_hl * 4;
       ip_proto = ip_h->ip_p;
-      if (ip_proto == 0x6)
+      if (ip_proto == IPPROTO_TCP)
       {
-        tcp_h = (struct tcphdr*)(packet + sizeof(struct ethhdr) + ip_length);
-        tcp_length = ((*((char*)tcp_h + 12) >> 4) & 0x0f) * 4;
-        data = (unsigned char *)(packet + sizeof(struct ethhdr) + ip_length + tcp_length);
+        tcp_h = (struct tcphdr*)((void *)ip_h + ip_length);
+        tcp_length = tcp_h->th_off * 4;
+        data = (unsigned char *)(tcp_h + tcp_length);
         print_mac("src_MAC:", (unsigned char *)eth_h->h_source);
         print_mac("dst_MAC:", (unsigned char *)eth_h->h_dest);
         printf("src ip:\t\t%s\n", inet_ntoa(ip_h->ip_src));
