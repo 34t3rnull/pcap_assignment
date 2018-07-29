@@ -4,6 +4,7 @@
 #include <linux/if_ether.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define ETHERTYPE_IP  0x0800
 #define IPPROTO_TCP   0x06
@@ -19,10 +20,23 @@ void print_mac(const char *head, unsigned char *data)
     data[0], data[1], data[2], data[3], data[4], data[5]);
 }
 
-void print_data(const char *head, unsigned char *data)
+void print_data(unsigned char *data, int size)
 {
-  printf("%s\t\t%02x %02x %02x %02x %02x %02x %02x %02x\n", head,
-    data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+  if (size > 16)
+    size = 16;
+  printf("data:\t\t");
+  if (!size)
+  {
+    printf("None\n");
+    return;
+  }
+  for(int i = 0; i < size; i++)
+  {
+    if (!(i % 8) && i)
+      printf("\n\t\t");
+    printf("%02x ", data[i]);
+  }
+  printf("\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -51,6 +65,8 @@ int main(int argc, char* argv[]) {
     int res = pcap_next_ex(handle, &header, &packet);
     unsigned int ip_length;
     u_int8_t tcp_length;
+    int data_size;
+
     if (res == 0) continue;
     if (res == -1 || res == -2) break;
     printf("*********************************************************\n");
@@ -67,14 +83,14 @@ int main(int argc, char* argv[]) {
         tcp_h = (struct tcphdr*)((void *)ip_h + ip_length);
         tcp_length = tcp_h->th_off * 4;
         data = (unsigned char *)(tcp_h + tcp_length);
+        data_size = header->caplen - (sizeof(struct ethhdr) + ip_length + tcp_length);
         print_mac("src_MAC:", (unsigned char *)eth_h->h_source);
         print_mac("dst_MAC:", (unsigned char *)eth_h->h_dest);
         printf("src ip:\t\t%s\n", inet_ntoa(ip_h->ip_src));
         printf("dst ip:\t\t%s\n", inet_ntoa(ip_h->ip_dst));
         printf("src port:\t%u\n", htons(tcp_h->th_sport));
         printf("dst port:\t%u\n", htons(tcp_h->th_dport));
-        print_data("data:", (unsigned char *)data);
-        print_data("", (unsigned char *)data + 8);
+        print_data((unsigned char *)data, data_size);
       }
     }
     printf("*********************************************************\n");
