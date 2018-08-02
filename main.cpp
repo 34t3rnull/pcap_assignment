@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
       ip_proto = ip_h->ip_p;
       if (ip_proto == IPPROTO_TCP)
       {
-        tcp_h = (struct tcphdr*)((void *)ip_h + ip_length);
+        tcp_h = (struct tcphdr*)((char *)ip_h + ip_length);
         tcp_length = tcp_h->th_off * 4;
         data = (unsigned char *)(tcp_h + tcp_length);
         data_size = header->caplen - (sizeof(struct ethhdr) + ip_length + tcp_length);
